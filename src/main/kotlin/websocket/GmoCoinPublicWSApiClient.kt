@@ -9,13 +9,15 @@ import io.ktor.http.cio.websocket.readText
 class GmoCoinPublicWSApiClient private constructor() {
     companion object {
         private const val WEB_SOCKET_URL = "wss://api.coin.z.com/ws/public/v1"
+
         private var INSTANCE: GmoCoinPublicWSApiClient? = null
+
         fun getInstance(): GmoCoinPublicWSApiClient {
             return INSTANCE ?: synchronized(this) { INSTANCE ?: GmoCoinPublicWSApiClient().also { INSTANCE = it } }
         }
     }
 
-    suspend fun fetchLatestRate() {
+    suspend fun subscribeLatestRate() {
         val sendMsg = """
             {
                 "command": "subscribe", 
@@ -41,7 +43,7 @@ class GmoCoinPublicWSApiClient private constructor() {
         }
     }
 
-    suspend fun fetchTradeHistory() {
+    suspend fun subscribeTradeHistory() {
         val sendMsg = """
             {
                 "command": "subscribe", 

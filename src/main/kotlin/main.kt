@@ -3,7 +3,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import rest.GmoCoinPrivateRestApiClient
@@ -19,9 +18,11 @@ fun main() = runBlocking {
     }
 
     println("===== Private REST API =====")
+    var accessToken: String
     GmoCoinPrivateRestApiClient.getInstance().use {
         it.fetchAccountMargin()
         it.fetchOrderInformation()
+        accessToken = it.fetchAccessToken()
     }
 
 
@@ -30,22 +31,20 @@ fun main() = runBlocking {
     println("======= Public Web Socket API ======")
     val wsClient = GmoCoinPublicWSApiClient.getInstance()
     scope.launch {
-        wsClient.fetchLatestRate()
+        wsClient.subscribeLatestRate()
     }
     scope.launch {
-        wsClient.fetchTradeHistory()
+        wsClient.subscribeTradeHistory()
     }
 
     println("======= Private Web Socket API ======")
     val privateWsClient = GmoCoinPrivateWSApiClient.getInstance()
     scope.launch {
-        privateWsClient.fetchLatestRate()
+        privateWsClient.subscribeOrderEvents(accessToken)
     }
 
     delay(30_000)
     println("=== STOP ===")
     scope.coroutineContext.cancelChildren()
     println("=== COMPLETED ===")
-    delay(10_000)
-    println("=== FINISHED ===")
 }
