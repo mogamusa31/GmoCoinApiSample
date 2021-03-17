@@ -3,7 +3,10 @@ package rest
 import Credential.API_KEY
 import Credential.SECRET_KEY
 import io.ktor.client.HttpClient
+import io.ktor.client.features.json.JsonFeature
+import io.ktor.client.features.json.serializer.KotlinxSerializer
 import io.ktor.client.request.get
+import io.ktor.client.request.post
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.readText
 import io.ktor.http.URLBuilder
@@ -25,7 +28,11 @@ class GmoCoinPrivateRestApiClient private constructor() : Closeable {
         }
     }
 
-    private val client = HttpClient()
+    private val client = HttpClient {
+        install(JsonFeature) {
+            serializer = KotlinxSerializer()
+        }
+    }
 
     fun fetchAccountMargin() = runBlocking {
         val timestamp = Calendar.getInstance().timeInMillis.toString()
@@ -69,6 +76,27 @@ class GmoCoinPrivateRestApiClient private constructor() : Closeable {
             headers.append("API-SIGN", sign)
         }
         println(response.readText())
+    }
+
+    fun fetchAccessToken(): String = runBlocking {
+        val timestamp = Calendar.getInstance().timeInMillis.toString()
+        val method = "POST"
+        val path = "/v1/ws-auth"
+        val reqBody = """{}"""
+
+        val keySpec = SecretKeySpec(SECRET_KEY.toByteArray(), "HmacSHA256")
+        val mac = Mac.getInstance("HmacSHA256")
+        mac.init(keySpec)
+        val sign = mac.doFinal((timestamp + method + path + reqBody).toByteArray())
+            .joinToString("") { String.format("%02x", it and 255.toByte()) }
+
+        val response = client.post<ApiToken>(ENDPOINT_URL + path) {
+            headers.append("API-KEY", API_KEY)
+            headers.append("API-TIMESTAMP", timestamp)
+            headers.append("API-SIGN", sign)
+            body = reqBody
+        }
+        response.data
     }
 
     override fun close() {
